@@ -6,20 +6,29 @@ import {
   signOut,
   UserCredential,
   User,
-} from 'firebase/auth';
-import { auth } from './config';
+} from "firebase/auth";
+import { auth } from "./config";
 
 // Helper function to set auth cookie
 const setAuthCookie = async (user: User) => {
   if (user) {
     const token = await user.getIdToken();
+
+    // Log token to console for testing
+    console.log("===========================================");
+    console.log("🔑 FIREBASE AUTH TOKEN:");
+    console.log(token);
+    console.log("===========================================");
+    console.log("Copy this token to use in API requests");
+
     document.cookie = `firebase-token=${token}; path=/; max-age=3600; SameSite=Lax`;
   }
 };
 
 // Helper function to clear auth cookie
 const clearAuthCookie = () => {
-  document.cookie = 'firebase-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+  document.cookie =
+    "firebase-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
 };
 
 // Sign up with email and password
@@ -28,11 +37,16 @@ export const signUpWithEmail = async (
   password: string
 ): Promise<UserCredential> => {
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
     await setAuthCookie(userCredential.user);
     return userCredential;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to sign up';
+    const message =
+      error instanceof Error ? error.message : "Failed to sign up";
     throw new Error(message);
   }
 };
@@ -43,11 +57,16 @@ export const signInWithEmail = async (
   password: string
 ): Promise<UserCredential> => {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
     await setAuthCookie(userCredential.user);
     return userCredential;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to sign in';
+    const message =
+      error instanceof Error ? error.message : "Failed to sign in";
     throw new Error(message);
   }
 };
@@ -60,7 +79,8 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
     await setAuthCookie(userCredential.user);
     return userCredential;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to sign in with Google';
+    const message =
+      error instanceof Error ? error.message : "Failed to sign in with Google";
     throw new Error(message);
   }
 };
@@ -71,7 +91,8 @@ export const signOutUser = async (): Promise<void> => {
     await signOut(auth);
     clearAuthCookie();
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to sign out';
+    const message =
+      error instanceof Error ? error.message : "Failed to sign out";
     throw new Error(message);
   }
 };

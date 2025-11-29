@@ -32,8 +32,34 @@ export function LoginForm({
     setError(null);
 
     try {
-      await signInWithEmail(email, password);
-      router.push("/home");
+      const userCredential = await signInWithEmail(email, password);
+      const user = userCredential.user;
+
+      // Get user profile to check if admin
+      const token = await user.getIdToken();
+      const profileResponse = await fetch(
+        `http://localhost:3001/api/profiles/user/${user.uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        const isAdmin = profileData.data?.is_admin;
+
+        // Route based on admin status
+        if (isAdmin) {
+          router.push("/admin");
+        } else {
+          router.push("/student");
+        }
+      } else {
+        // Profile doesn't exist, redirect to home
+        router.push("/home");
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -46,8 +72,34 @@ export function LoginForm({
     setError(null);
 
     try {
-      await signInWithGoogle();
-      router.push("/home");
+      const userCredential = await signInWithGoogle();
+      const user = userCredential.user;
+
+      // Get user profile to check if admin
+      const token = await user.getIdToken();
+      const profileResponse = await fetch(
+        `http://localhost:3001/api/profiles/user/${user.uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        const isAdmin = profileData.data?.is_admin;
+
+        // Route based on admin status
+        if (isAdmin) {
+          router.push("/admin");
+        } else {
+          router.push("/student");
+        }
+      } else {
+        // Profile doesn't exist, redirect to home
+        router.push("/home");
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
