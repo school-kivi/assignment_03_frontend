@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useAuth } from "@/lib/firebase/AuthContext";
 import { signOutUser } from "@/lib/firebase/auth";
@@ -8,7 +8,7 @@ import Link from "next/link";
 import { ThemeSwitcher } from "./theme-switcher";
 
 export function Navbar() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -24,7 +24,7 @@ export function Navbar() {
     <nav className="w-full flex justify-center h-16">
       <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
         <div className="flex gap-5 items-center font-semibold">
-          <Link href="/home">Student Portal</Link>
+          <span>Student Portal</span>
         </div>
         <div className="flex items-center gap-4">
           {loading ? (
@@ -36,7 +36,11 @@ export function Navbar() {
             </>
           ) : user ? (
             <>
-              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <span className="text-sm text-muted-foreground">
+                {profile
+                  ? `${profile.first_name} ${profile.last_name}`
+                  : user.email}
+              </span>
               <Button onClick={handleLogout} variant="outline" size="sm">
                 Log Out
               </Button>
@@ -49,9 +53,7 @@ export function Navbar() {
                 </Button>
               </Link>
               <Link href="/auth/sign-up">
-                <Button size="sm">
-                  Sign Up
-                </Button>
+                <Button size="sm">Sign Up</Button>
               </Link>
             </>
           )}
