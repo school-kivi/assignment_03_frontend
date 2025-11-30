@@ -242,7 +242,7 @@ export default function StudentAccounts() {
   );
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Student Accounts</h1>
@@ -351,7 +351,7 @@ export default function StudentAccounts() {
             onMouseEnter={handlePopupMouseEnter}
             onMouseLeave={handlePopupMouseLeave}
           >
-            <div className="bg-white dark:bg-gray-950 shadow-2xl rounded-lg p-4 border-2 border-gray-300 dark:border-gray-700 min-w-[300px]">
+            <div className="bg-background shadow-md rounded-lg p-4 border min-w-[300px]">
               <div className="space-y-2 mb-4">
                 <h3 className="font-semibold text-lg">
                   {hoveredProfile.first_name} {hoveredProfile.last_name}

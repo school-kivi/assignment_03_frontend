@@ -125,7 +125,7 @@ export default function RegisterGrades() {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="p-6">
       <div className="max-w-7xl mx-auto">
         {/* Year Filter Buttons and Course Dropdown */}
         <div className="flex gap-4 items-end mb-6">
