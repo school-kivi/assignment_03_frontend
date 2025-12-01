@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { auth } from "@/lib/firebase/config";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,22 +22,26 @@ import {
 } from "@/components/ui/dialog";
 import { Trash2, Edit, Upload } from "lucide-react";
 import Link from "next/link";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  person_number: string;
-  is_admin: boolean;
-  address: string;
-  email?: string;
-}
+import { Profile } from "@/types";
+import {
+  updateProfile,
+  deleteProfile,
+  uploadProfilesCSV,
+} from "@/lib/api/profiles";
+import { getFullName } from "@/lib/utils/profiles";
+import { useProfiles } from "@/lib/hooks/useProfiles";
+import { useHoverPopup } from "@/lib/hooks/useHoverPopup";
 
 export default function StudentAccounts() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const { profiles, refetch } = useProfiles();
+  const {
+    hoveredItem: hoveredProfile,
+    handleItemMouseEnter,
+    handleItemMouseLeave,
+    handlePopupMouseEnter,
+    handlePopupMouseLeave,
+  } = useHoverPopup(profiles);
+
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -47,7 +50,6 @@ export default function StudentAccounts() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [uploadingCSV, setUploadingCSV] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Form state
@@ -58,37 +60,6 @@ export default function StudentAccounts() {
     person_number: "",
     address: "",
   });
-
-  useEffect(() => {
-    fetchProfiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const getToken = async () => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("Not authenticated");
-    return await user.getIdToken();
-  };
-
-  const fetchProfiles = async () => {
-    try {
-      const token = await getToken();
-      const response = await fetch("http://localhost:3001/api/profiles", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      // Filter out admin profiles and sort alphabetically by last name
-      const sortedProfiles = (data.data || [])
-        .filter((profile: Profile) => !profile.is_admin)
-        .sort((a: Profile, b: Profile) =>
-          a.last_name.localeCompare(b.last_name)
-        );
-      setProfiles(sortedProfiles);
-    } catch (err) {
-      console.error("Error fetching profiles:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch profiles");
-    }
-  };
 
   const handleEdit = (profile: Profile) => {
     setEditingProfile(profile);
@@ -112,27 +83,10 @@ export default function StudentAccounts() {
     setError(null);
 
     try {
-      const token = await getToken();
-      const response = await fetch(
-        `http://localhost:3001/api/profiles/${editingProfile.id}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to update profile");
-      }
-
+      await updateProfile(editingProfile.id, formData);
       setSuccess("Profile updated successfully!");
       setIsDialogOpen(false);
-      fetchProfiles();
+      refetch();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -144,21 +98,9 @@ export default function StudentAccounts() {
     if (!confirm("Are you sure you want to delete this profile?")) return;
 
     try {
-      const token = await getToken();
-      const response = await fetch(
-        `http://localhost:3001/api/profiles/${profileId}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete profile");
-      }
-
+      await deleteProfile(profileId);
       setSuccess("Profile deleted successfully!");
-      fetchProfiles();
+      refetch();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     }
@@ -172,74 +114,21 @@ export default function StudentAccounts() {
     setSuccess(null);
 
     try {
-      const token = await getToken();
-      const formData = new FormData();
-      formData.append("file", csvFile);
-
-      const response = await fetch(
-        "http://localhost:3001/api/profiles/import-csv",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error("CSV Upload Error:", data);
-        throw new Error(data.error || data.message || "Failed to import CSV");
-      }
-
+      const result = await uploadProfilesCSV(csvFile);
       setSuccess(
-        `CSV imported successfully! ${data.imported} profiles added.${
-          data.failed > 0 ? ` ${data.failed} rows failed.` : ""
+        `CSV imported successfully! ${result.imported} profiles added.${
+          result.failed > 0 ? ` ${result.failed} rows failed.` : ""
         }`
       );
       setCsvFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      fetchProfiles();
+      refetch();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setUploadingCSV(false);
     }
   };
-
-  const handleRowMouseEnter = (profileId: string) => {
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-    setHoveredRow(profileId);
-  };
-
-  const handleRowMouseLeave = () => {
-    closeTimeoutRef.current = setTimeout(() => {
-      setHoveredRow(null);
-    }, 300);
-  };
-
-  const handlePopupMouseEnter = () => {
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-  };
-
-  const handlePopupMouseLeave = () => {
-    closeTimeoutRef.current = setTimeout(() => {
-      setHoveredRow(null);
-    }, 300);
-  };
-
-  const hoveredProfile = useMemo(
-    () => profiles.find((p) => p.id === hoveredRow),
-    [profiles, hoveredRow]
-  );
 
   return (
     <div className="p-6">
@@ -317,12 +206,10 @@ export default function StudentAccounts() {
                     <TableRow
                       key={profile.id}
                       className="relative"
-                      onMouseEnter={() => handleRowMouseEnter(profile.id)}
-                      onMouseLeave={handleRowMouseLeave}
+                      onMouseEnter={() => handleItemMouseEnter(profile.id)}
+                      onMouseLeave={handleItemMouseLeave}
                     >
-                      <TableCell>
-                        {profile.first_name} {profile.last_name}
-                      </TableCell>
+                      <TableCell>{getFullName(profile)}</TableCell>
                       <TableCell>{profile.email || ""}</TableCell>
                       <TableCell>{profile.phone}</TableCell>
                       <TableCell>{profile.person_number}</TableCell>
@@ -354,7 +241,7 @@ export default function StudentAccounts() {
             <div className="bg-background shadow-md rounded-lg p-4 border min-w-[300px]">
               <div className="space-y-2 mb-4">
                 <h3 className="font-semibold text-lg">
-                  {hoveredProfile.first_name} {hoveredProfile.last_name}
+                  {getFullName(hoveredProfile)}
                 </h3>
                 <div className="text-sm space-y-1">
                   <p>
